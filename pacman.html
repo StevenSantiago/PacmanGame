@@ -1,0 +1,374 @@
+<!--
+TODO: 1) Need to place player back into map
+2) Need to add Ghost to chase player around
+3) Need to add lives and hit detection with enemies
+-->
+<html>
+<head>
+<title>PacMan Game</title>
+<style>
+*{
+  margin:0;
+  padding:0;
+}
+.row{
+  line-height: 0;
+}
+
+.wall{
+  background-color: blue;
+  height: 40px;
+  width: 40px;
+  display: inline-block;
+}
+
+.sushi{
+  background-color: black;
+  height: 40px;
+  width: 40px;
+  display: inline-block;
+  background-image: url("img/sushi.png");
+  background-size: contain;
+}
+
+.onigiri{
+  background-color: black;
+  height: 40px;
+  width: 40px;
+  display: inline-block;
+  background-image: url("img/onigiri.png");
+  background-size: contain;
+}
+
+.blank{
+  background-color: black;
+  height: 40px;
+  width: 40px;
+  display: inline-block;
+}
+
+#ninjaman{
+  background-color: black;
+  height: 40px;
+  width: 40px;
+  display: inline-block;
+  background-image: url("img/ninja.gif");
+  background-size: contain;
+  position: absolute;
+}
+
+</style>
+
+</head>
+
+
+<body onload="initWorld()">
+  <div id ="world">
+  </div>
+  <div id = ninjaman>
+  </div>
+  <p id="Score"></p>
+</body>
+
+<script>
+  var score =0;
+  var openCells=0;
+  var row;
+  var col;
+  var world = [[]];
+  var visited = [];
+
+  var worldDict = {
+    0:"blank",
+    1:"wall",
+    2:"sushi",
+    3:"onigiri"
+  };
+
+  function  initWorld(){
+    var content;
+    var iterator = 1;
+    var graph = new Graph();
+    row = Math.ceil((Math.random() + 1) * 8);
+    col = Math.ceil((Math.random() + 1) * 8);
+
+    //expand to correct number of rows
+    for( var i=0; i<row; i++ ) {
+        world.push( [] );
+    }
+  // expand all rows to have the correct amount of cols
+    for (var i = 0; i < row; i++){
+      for (var j =  0; j < col; j++){
+        world[i].push(0);
+      }
+    }
+    // Fill in world with items and build graph with no connections
+    for(var i=0;i<row;i++){
+      for(var j=0;j<col;j++){
+        if(i ==0 && j==0){
+          world[i][j] == 0; // always make first spot open for now
+        } else {
+        content = Math.floor(Math.random() * 4);
+        world[i][j] = content;
+          }
+          graph.addVertex(iterator);
+          iterator++;
+        }
+      }
+      iterator =1;
+      // Connect vertices together to make path
+
+      for(var i=0;i<row;i++){
+        for(var j=0;j<col;j++){
+          // if content at this position is not a wall
+          if(world[i][j] !=1){
+            //check left side
+            if(j!=0){
+              if(world[i][j-1] !=1){
+                graph.addEdge(iterator, iterator-1);
+              }
+            }
+            //check top side
+            if(i!=0){
+              if(world[i-1][j] !=1){
+                graph.addEdge(iterator, iterator-col);
+              }
+            }
+
+            //check right side
+            if(j < col-1){
+              if(world[i][j+1] !=1){
+                graph.addEdge(iterator,iterator+1);
+              }
+            }
+            //check bottom side
+            if(i < row-1){
+              if(world[i+1][j] !=1){
+                graph.addEdge(iterator, iterator+col);
+              }
+            }
+          }
+          iterator++;
+        }
+      }
+    graph.print();
+    //Get rid of unreacheable blocks, possibly with breath first search
+    console.log('graph size (number of vertices):', graph.size()); // => 6
+    console.log('graph relations (number of edges):', graph.relations()); // => 7
+    graph.traverseDFS(1, function(vertex) { console.log(vertex); }); // => 1 2 3 4 5 6
+    console.log('---');
+
+    graph.removeUnreachable();
+    //If graph is not at least 50% open space than create world again
+    if(graph.openCells <= graph.size()/2){
+      initWorld();
+    }
+
+    //console.log(visited);
+    drawWorld();
+    //drawNinjaman();
+  }
+
+  function drawWorld(){
+    var output = "";
+    for(i=0;i<row;i++){
+      output += "<div class = 'row'>";
+      for(j=0;j<col;j++){
+        output+= "<div class = " + worldDict[world[i][j]] +
+        "></div>";
+      }
+      output+="</div>";
+
+    }
+    document.getElementById("world").innerHTML = output;
+    drawNinjaman();
+  }
+
+//Starting position for ninjaman
+  var ninjaman = {
+    x:0,
+    y:0
+  };
+
+  function drawNinjaman(){
+    document.getElementById("ninjaman").style.top = ninjaman.y * 40 + "px";
+    document.getElementById("ninjaman").style.left = ninjaman.x * 40 + "px";
+    eatFood(ninjaman.y,ninjaman.x);
+  }
+
+  function eatFood(y,x){
+    if(world[y][x] ==2){
+      score +=2;
+      document.getElementById('Score').innerHTML = "Your Score is: " + score;
+      world[y][x] = 0;
+    } else if(world[y][x] ==3){
+      score +=1;
+      document.getElementById('Score').innerHTML = "Your Score is: " + score;
+      world[y][x] = 0;
+    }
+  }
+
+  document.onkeydown = function(e){
+    if(e.keyCode == 37 && ninjaman.x !=0){
+      //Go left
+      if(world[ninjaman.y][ninjaman.x -1] !=1){
+        console.log("Going Left");
+        ninjaman.x--;
+      }
+      //Go up
+    } else if(e.keyCode == 38 && ninjaman.y !=0){
+      if(world[ninjaman.y-1][ninjaman.x] !=1){
+        ninjaman.y--;
+      }
+      //Go right
+    } else if(e.keyCode == 39 && ninjaman.x!=col-1){
+      if(world[ninjaman.y][ninjaman.x +1] !=1){
+        ninjaman.x++;
+      }
+      //Go down
+  } else if(e.keyCode == 40 && ninjaman.y!=row-1){
+      if(world[ninjaman.y+1][ninjaman.x] !=1){
+        ninjaman.y++;
+      }
+    }else if(e.keyCode == 55){
+      console.log("Draw NEW World");
+      initWorld();
+    }
+    drawWorld();
+  }
+
+// Constructor to create Graph Object
+function Graph() {
+  this.vertices = []; // keep track of nodes
+  this.edges = [];// keep track of connections from nodes
+  this.numberOfEdges = 0; // number of connections
+  this.openCells = 0;
+  visited = [];// reset visited nodes
+}
+
+Graph.prototype.addVertex = function(vertex) {
+  this.vertices.push(vertex);// push vertix to array to keep track off
+  this.edges[vertex] = [];//each entry of the vertex will create an empty to array to keep track of edges
+};
+Graph.prototype.removeVertex = function(vertex) {
+  var index = this.vertices.indexOf(vertex);
+  if(~index) {
+    this.vertices.splice(index, 1);
+  }
+  while(this.edges[vertex].length) {
+    var adjacentVertex = this.edges[vertex].pop();
+    this.removeEdge(adjacentVertex, vertex);
+  }
+};
+Graph.prototype.addEdge = function(vertex1, vertex2) {
+  this.edges[vertex1].push(vertex2);
+  this.numberOfEdges++;
+};
+Graph.prototype.removeEdge = function(vertex1, vertex2) {
+  var index1 = this.edges[vertex1] ? this.edges[vertex1].indexOf(vertex2) : -1;
+  var index2 = this.edges[vertex2] ? this.edges[vertex2].indexOf(vertex1) : -1;
+  if(~index1) {
+    this.edges[vertex1].splice(index1, 1);
+    this.numberOfEdges--;
+  }
+  if(~index2) {
+    this.edges[vertex2].splice(index2, 1);
+  }
+};
+Graph.prototype.size = function() {
+  return this.vertices.length;
+};
+Graph.prototype.relations = function() {
+  return this.numberOfEdges;
+};
+Graph.prototype.removeUnreachable = function(){
+  var visitor = 1;
+  for (var i = 1; i <= row; i++){
+    for (var j =  1; j <= col; j++){
+      //if node has not been visited then make sure it is a wall
+      if(!visited[visitor]){
+        world[i-1][j-1] = 1;
+      }else{
+        this.openCells++;
+      }
+      visitor++;
+    }
+  }
+};
+Graph.prototype.traverseDFS = function(vertex, fn) {
+  if(!~this.vertices.indexOf(vertex)) {
+    return console.log('Vertex not found');
+  }
+  //var visited = [];
+  this._traverseDFS(vertex, visited, fn);
+};
+Graph.prototype._traverseDFS = function(vertex, visited, fn) {
+  visited[vertex] = true;
+  if(this.edges[vertex] !== undefined) {
+    fn(vertex);
+  }
+  for(var i = 0; i < this.edges[vertex].length; i++) {
+    if(!visited[this.edges[vertex][i]]) {
+      this._traverseDFS(this.edges[vertex][i], visited, fn);
+    }
+  }
+};
+Graph.prototype.traverseBFS = function(vertex, fn) {
+  if(!~this.vertices.indexOf(vertex)) {
+    return console.log('Vertex not found');
+  }
+  var queue = [];
+  queue.push(vertex);
+  var visited = [];
+  visited[vertex] = true;
+
+  while(queue.length) {
+    vertex = queue.shift();
+    fn(vertex);
+    for(var i = 0; i < this.edges[vertex].length; i++) {
+      if(!visited[this.edges[vertex][i]]) {
+        visited[this.edges[vertex][i]] = true;
+        queue.push(this.edges[vertex][i]);
+      }
+    }
+  }
+};
+Graph.prototype.pathFromTo = function(vertexSource, vertexDestination) {
+  if(!~this.vertices.indexOf(vertexSource)) {
+    return console.log('Vertex not found');
+  }
+  var queue = [];
+  queue.push(vertexSource);
+  var visited = [];
+  visited[vertexSource] = true;
+  var paths = [];
+
+  while(queue.length) {
+    var vertex = queue.shift();
+    for(var i = 0; i < this.edges[vertex].length; i++) {
+      if(!visited[this.edges[vertex][i]]) {
+        visited[this.edges[vertex][i]] = true;
+        queue.push(this.edges[vertex][i]);
+        // save paths between vertices
+        paths[this.edges[vertex][i]] = vertex;
+      }
+    }
+  }
+  if(!visited[vertexDestination]) {
+    return undefined;
+  }
+
+  var path = [];
+  for(var j = vertexDestination; j != vertexSource; j = paths[j]) {
+    path.push(j);
+  }
+  path.push(j);
+  return path.reverse().join('-');
+};
+Graph.prototype.print = function() {
+  console.log(this.vertices.map(function(vertex) {
+    return (vertex + ' -> ' + this.edges[vertex].join(', ')).trim();
+  }, this).join(' | '));
+};
+</script>
+<html>
